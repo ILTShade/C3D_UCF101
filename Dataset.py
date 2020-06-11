@@ -18,6 +18,7 @@ class UCF101VideoDataset(Data.Dataset):
         self.resize_height = 128
         self.frame_minimum = 16
         self.max_frequency = 4
+        self.crop_len = 112
         self.clip_len = clip_len
         if preprocess or not self.check_preprocess():
             self.preprocess()
@@ -37,14 +38,14 @@ class UCF101VideoDataset(Data.Dataset):
         frame = np.load(self.fnames[index]) # CTHW
         assert self.resize_height == frame.shape[2] and self.resize_width == frame.shape[3]
         # crop
-        t_start = np.random.randint(frame.shape[1] - self.frame_minimum)
-        h_start = np.random.randint(self.resize_height - self.clip_len)
-        w_start = np.random.randint(self.resize_width - self.clip_len)
+        t_start = np.random.randint(frame.shape[1] - self.clip_len)
+        h_start = np.random.randint(self.resize_height - self.crop_len)
+        w_start = np.random.randint(self.resize_width - self.crop_len)
         frame = frame[
             :,
-            t_start:(t_start+self.frame_minimum),
-            h_start:(h_start+self.clip_len),
-            w_start:(w_start+self.clip_len)
+            t_start:(t_start+self.clip_len),
+            h_start:(h_start+self.crop_len),
+            w_start:(w_start+self.crop_len)
         ]
         # normalize
         frame = frame.astype(np.float)
@@ -110,7 +111,7 @@ class UCF101VideoDataset(Data.Dataset):
             while True:
                 ret, frame = capture.read()
                 if not ret:
-                    if frame_index / frame_count >= 0.9:
+                    if len(output_array) >= 16:
                         break
                     raise Exception(f'can not read {avi}, {frame_index}/{frame_count}')
                 if frame_index % extract_frequency == 0:
