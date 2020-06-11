@@ -38,9 +38,21 @@ class UCF101VideoDataset(Data.Dataset):
         frame = np.load(self.fnames[index]) # CTHW
         assert self.resize_height == frame.shape[2] and self.resize_width == frame.shape[3]
         # crop
-        t_start = np.random.randint(frame.shape[1] - self.clip_len)
-        h_start = np.random.randint(self.resize_height - self.crop_len)
-        w_start = np.random.randint(self.resize_width - self.crop_len)
+        if self.split == 'train':
+            if frame.shape[1] > self.clip_len:
+                t_start = np.random.randint(frame.shape[1] - self.clip_len)
+            elif frame.shape[1] == self.clip_len:
+                t_start = 0
+            else:
+                raise Exception(f'can not support {frame.shape[1]}')
+            h_start = np.random.randint(self.resize_height - self.crop_len)
+            w_start = np.random.randint(self.resize_width - self.crop_len)
+        elif self.split == 'test':
+            t_start = 0
+            h_start = math.floor((self.resize_height - self.crop_len) / 2)
+            w_start = math.floor((self.resize_width - self.crop_len) / 2)
+        else:
+            raise NotImplementedError
         frame = frame[
             :,
             t_start:(t_start+self.clip_len),
@@ -48,14 +60,15 @@ class UCF101VideoDataset(Data.Dataset):
             w_start:(w_start+self.crop_len)
         ]
         # normalize
-        frame = frame.astype(np.float)
+        frame = frame.astype(np.float32) / 256.
         mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1, 1))
         std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1, 1))
         frame = (frame - mean) / std
+        frame = frame.astype(np.float32)
         # random flip
         if self.split == 'train' and np.random.random() > 0.5:
             frame = frame[:,:,:,::-1]
-        return frame, label
+        return frame.copy(), label
     def check_preprocess(self):
         '''
         check if there is already input dir
@@ -125,4 +138,5 @@ class UCF101VideoDataset(Data.Dataset):
             np.save(output_name, output_array)
 
 if __name__ == '__main__':
-    ucf101_dataset = UCF101VideoDataset('/home/sunhanbo/workspace/C3D_UCF101/Dataset', 'train', 16, True)
+    ucf101_dataset = UCF101VideoDataset('/home/sunhanbo/workspace/C3D_UCF101/Dataset', 'train', 16, False)
+    slice_data = ucf101_dataset[0][0]
