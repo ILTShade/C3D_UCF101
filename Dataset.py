@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+from scipy.fftpack import dct
 
 import cv2
 import numpy as np
@@ -68,7 +69,9 @@ class UCF101VideoDataset(Data.Dataset):
         # random flip
         if self.split == 'train' and np.random.random() > 0.5:
             frame = frame[:,:,:,::-1]
-        return frame.copy(), label
+        # return frame.copy(), label
+        # dct
+        return dct(frame, type = 2, n = None, axis = 1, norm = 'ortho', overwrite_x = False), label
     def check_preprocess(self):
         '''
         check if there is already input dir

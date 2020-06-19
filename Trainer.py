@@ -17,9 +17,14 @@ import torch.optim.lr_scheduler as lr_scheduler
 from torch.nn import DataParallel
 import torch.utils.data as Data
 from tqdm import tqdm
+from prefetch_generator import BackgroundGenerator
 
 import Dataset
 import Network
+
+class DataLoaderX(Data.DataLoader):
+    def __iter__(self):
+        return BackgroundGenerator(super().__iter__())
 
 
 class Trainer(object):
@@ -31,17 +36,21 @@ class Trainer(object):
         self.train_dataset = Dataset.UCF101VideoDataset(
             '/home/sunhanbo/workspace/C3D_UCF101/Dataset', 'train', 16, False
         )
-        self.train_loader = Data.DataLoader(
+        self.train_loader = DataLoaderX(
             self.train_dataset, batch_size = 60, shuffle = True, drop_last = True, num_workers = 16,
         )
         self.test_dataset = Dataset.UCF101VideoDataset(
             '/home/sunhanbo/workspace/C3D_UCF101/Dataset', 'test', 16, False
         )
-        self.test_loader = Data.DataLoader(
+        self.test_loader = DataLoaderX(
             self.test_dataset, batch_size = 60, shuffle = False, drop_last = False, num_workers = 16,
         )
         # networks
         self.net = Network.C3DNetwork(101)
+        self.net.load_state_dict(torch.load(
+            './zoo/c3d_ucf101_120_0.9490595611285266.pth',
+            map_location = lambda storage, location: storage
+        ))
     def train(self):
         '''
         train network
@@ -74,7 +83,7 @@ class Trainer(object):
             if epoch == 0 or (epoch + 1) % 10 == 0:
                 accuracy = self.evaluate()
                 print(f'epoch {epoch+1:04d}: accuracy is {accuracy}')
-                torch.save(self.net.module.state_dict(), f'./zoo/c3d_ucf101_{epoch+1}_{accuracy}.pth')
+                torch.save(self.net.module.state_dict(), f'./zoo/dct_c3d_ucf101_{epoch+1}_{accuracy}.pth')
     def evaluate(self):
         '''
         evaluate network
