@@ -48,7 +48,7 @@ class Trainer(object):
         # networks
         self.net = Network.C3DNetwork(101)
         self.net.load_state_dict(torch.load(
-            './zoo/c3d_ucf101_120_0.9490595611285266.pth',
+            './zoo/dct_c3d_ucf101_120_0.9529780564263323.pth',
             map_location = lambda storage, location: storage
         ))
     def train(self):
@@ -83,7 +83,7 @@ class Trainer(object):
             if epoch == 0 or (epoch + 1) % 10 == 0:
                 accuracy = self.evaluate()
                 print(f'epoch {epoch+1:04d}: accuracy is {accuracy}')
-                torch.save(self.net.module.state_dict(), f'./zoo/dct_c3d_ucf101_{epoch+1}_{accuracy}.pth')
+                torch.save(self.net.module.state_dict(), f'./zoo/first_dct_c3d_ucf101_{epoch+1}_{accuracy}.pth')
     def evaluate(self):
         '''
         evaluate network

@@ -71,7 +71,9 @@ class UCF101VideoDataset(Data.Dataset):
             frame = frame[:,:,:,::-1]
         # return frame.copy(), label
         # dct
-        return dct(frame, type = 2, n = None, axis = 1, norm = 'ortho', overwrite_x = False), label
+        frame = dct(frame, type = 2, n = None, axis = 1, norm = 'ortho', overwrite_x = False)
+        frame = frame[:,:8,:,:].copy()
+        return frame, label
     def check_preprocess(self):
         '''
         check if there is already input dir

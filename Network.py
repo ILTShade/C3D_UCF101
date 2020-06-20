@@ -52,7 +52,7 @@ class C3DNetwork(nn.Module):
         self.conv5b = nn.Conv3d(512, 512, kernel_size = (3, 3, 3), padding = (1, 1, 1))
         self.bn5b = nn.BatchNorm3d(512)
         self.relu5b = nn.ReLU(inplace = True)
-        self.pool5 = nn.MaxPool3d(kernel_size = (2, 2, 2), stride = (2, 2, 2), padding = (0, 1, 1))
+        self.pool5 = nn.MaxPool3d(kernel_size = (1, 2, 2), stride = (1, 2, 2), padding = (0, 1, 1))
         # fc
         self.fc6 = nn.Linear(8192, 4096)
         self.dropout6 = nn.Dropout(p = 0.5)
@@ -78,7 +78,7 @@ class C3DNetwork(nn.Module):
         x = self.relu5b(self.bn5b(self.conv5b(x)))
         x = self.pool5(x)
         # fc
-        x = x.view(-1, 8192)
+        x = x.view(x.size(0), -1)
         x = self.relu6(self.dropout6(self.fc6(x)))
         x = self.fc7(x)
         return x
@@ -86,6 +86,6 @@ class C3DNetwork(nn.Module):
 if __name__ == '__main__':
     net = C3DNetwork(101)
     print(net)
-    inputs = torch.rand(1, 3, 16, 112, 112)
+    inputs = torch.rand(1, 3, 8, 112, 112)
     outputs = net(inputs)
     print(outputs.size())
