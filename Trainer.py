@@ -47,10 +47,13 @@ class Trainer(object):
         )
         # networks
         self.net = Network.C3DNetwork(101)
-        self.net.load_state_dict(torch.load(
-            './zoo/c3d_ucf101_120_0.9490595611285266.pth',
+        origin_net_weights = torch.load(
+            './zoo/dct_c3d_ucf101_120_0.9529780564263323.pth',
             map_location = lambda storage, location: storage
-        ))
+        )
+        origin_net_weights['frequency_weights'] = torch.zeros(16)
+        self.net.load_state_dict(origin_net_weights, strict = True)
+        self.device = [4, 5, 6, 7]
     def train(self):
         '''
         train network
@@ -83,7 +86,7 @@ class Trainer(object):
             if epoch == 0 or (epoch + 1) % 10 == 0:
                 accuracy = self.evaluate()
                 print(f'epoch {epoch+1:04d}: accuracy is {accuracy}')
-                torch.save(self.net.module.state_dict(), f'./zoo/dct_c3d_ucf101_{epoch+1}_{accuracy}.pth')
+                torch.save(self.net.module.state_dict(), f'./zoo/reweight_dct_c3d_ucf101_{epoch+1}_{accuracy}.pth')
     def evaluate(self):
         '''
         evaluate network
@@ -99,14 +102,18 @@ class Trainer(object):
             labels = labels.to(outputs.device)
             test_correct += (predicted == labels).sum().item()
             test_total += labels.size(0)
+        with torch.no_grad():
+            reweights = torch.sigmoid(self.net.module.frequency_weights)
+            reweights = reweights.cpu().numpy()
+        print(f'In this epoch, frequency weights are {reweights}')
         return test_correct / test_total
     def _load_net_device(self):
         '''
         load net to device
         '''
         if not isinstance(self.net, DataParallel):
-            self.net.to(torch.device('cuda:0'))
-            self.net = DataParallel(self.net, device_ids = [0, 1, 2, 3])
+            self.net.to(torch.device(f'cuda:{self.device[0]}'))
+            self.net = DataParallel(self.net, device_ids = self.device)
 
 if __name__ == '__main__':
     trainer = Trainer()

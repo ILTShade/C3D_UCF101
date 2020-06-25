@@ -19,6 +19,8 @@ class C3DNetwork(nn.Module):
     '''
     def __init__(self, num_classes = 101):
         super(C3DNetwork, self).__init__()
+        # input shape is N*3*16*112*112(NCTHW)
+        self.frequency_weights = nn.Parameter(torch.zeros(16))
         # part1
         self.conv1 = nn.Conv3d(3, 64, kernel_size = (3, 3, 3), padding = (1, 1, 1))
         self.bn1 = nn.BatchNorm3d(64)
@@ -59,6 +61,10 @@ class C3DNetwork(nn.Module):
         self.relu6 = nn.ReLU(inplace = True)
         self.fc7 = nn.Linear(4096, num_classes)
     def forward(self, x):
+        # reweight
+        reweight = torch.sigmoid(self.frequency_weights)
+        reweight = torch.reshape(reweight, (1, 1, 16, 1, 1))
+        x = x * reweight
         # part1
         x = self.relu1(self.bn1(self.conv1(x)))
         x = self.pool1(x)
@@ -78,7 +84,7 @@ class C3DNetwork(nn.Module):
         x = self.relu5b(self.bn5b(self.conv5b(x)))
         x = self.pool5(x)
         # fc
-        x = x.view(-1, 8192)
+        x = x.view(x.size(0), -1)
         x = self.relu6(self.dropout6(self.fc6(x)))
         x = self.fc7(x)
         return x
@@ -89,3 +95,4 @@ if __name__ == '__main__':
     inputs = torch.rand(1, 3, 16, 112, 112)
     outputs = net(inputs)
     print(outputs.size())
+    print(net.frequency_weights)
