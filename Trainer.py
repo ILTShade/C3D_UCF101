@@ -54,6 +54,7 @@ class Trainer(object):
         origin_net_weights['frequency_weights'] = torch.zeros(16)
         self.net.load_state_dict(origin_net_weights, strict = True)
         self.device = [4, 5, 6, 7]
+        self.frequency_lambda = 1e-2
     def train(self):
         '''
         train network
@@ -77,10 +78,13 @@ class Trainer(object):
                 labels = labels.to(outputs.device)
                 # loss and backward
                 loss = criterion(outputs, labels)
+                # add frequency weights
+                frequency_loss = torch.sum(torch.sigmoid(self.net.module.frequency_weights))
+                loss = loss + self.frequency_lambda * frequency_loss
                 self.net.zero_grad()
                 loss.backward()
                 optimizer.step()
-                tqdm_loader.set_description(f'loss is {loss.item():.4f}')
+                tqdm_loader.set_description(f'celoss is {loss.item():.4f}, floss is {frequency_loss.item():.4f}')
             scheduler.step()
             # test and scheduler
             if epoch == 0 or (epoch + 1) % 10 == 0:
@@ -95,16 +99,16 @@ class Trainer(object):
         self.net.eval()
         test_correct = 0
         test_total = 0
-        for images, labels in tqdm(self.test_loader):
-            outputs = self.net(images)
-            _, predicted = torch.max(outputs, 1)
-            # test
-            labels = labels.to(outputs.device)
-            test_correct += (predicted == labels).sum().item()
-            test_total += labels.size(0)
         with torch.no_grad():
-            reweights = torch.sigmoid(self.net.module.frequency_weights)
-            reweights = reweights.cpu().numpy()
+            for images, labels in tqdm(self.test_loader):
+                outputs = self.net(images)
+                _, predicted = torch.max(outputs, 1)
+                # test
+                labels = labels.to(outputs.device)
+                test_correct += (predicted == labels).sum().item()
+                test_total += labels.size(0)
+            reweights = self.net.module.frequency_weights
+            reweights = torch.sigmoid(reweights).detach().cpu().numpy()
         print(f'In this epoch, frequency weights are {reweights}')
         return test_correct / test_total
     def _load_net_device(self):

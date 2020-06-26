@@ -95,4 +95,4 @@ if __name__ == '__main__':
     inputs = torch.rand(1, 3, 16, 112, 112)
     outputs = net(inputs)
     print(outputs.size())
-    print(net.frequency_weights)
+    print(torch.sigmoid(net.frequency_weights).detach().cpu().numpy())
