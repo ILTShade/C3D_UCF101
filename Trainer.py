@@ -16,6 +16,7 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.nn import DataParallel
 import torch.utils.data as Data
+import torch.nn.functional as F
 from tqdm import tqdm
 from prefetch_generator import BackgroundGenerator
 
@@ -51,10 +52,11 @@ class Trainer(object):
             './zoo/dct_c3d_ucf101_120_0.9529780564263323.pth',
             map_location = lambda storage, location: storage
         )
-        origin_net_weights['frequency_weights'] = torch.zeros(16)
+        init_frequency_weights = np.random.rand(16) * 2 - 1
+        origin_net_weights['frequency_weights'] = torch.from_numpy(init_frequency_weights).float()
         self.net.load_state_dict(origin_net_weights, strict = True)
         self.device = [4, 5, 6, 7]
-        self.frequency_lambda = 1e-2
+        self.frequency_lambda = 1
     def train(self):
         '''
         train network
@@ -79,8 +81,8 @@ class Trainer(object):
                 # loss and backward
                 loss = criterion(outputs, labels)
                 # add frequency weights
-                frequency_loss = torch.sum(torch.sigmoid(self.net.module.frequency_weights))
-                loss = loss + self.frequency_lambda * frequency_loss
+                frequency_loss = torch.std(F.softmax(self.net.module.frequency_weights, dim = 0))
+                loss = loss - self.frequency_lambda * frequency_loss
                 self.net.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -108,7 +110,7 @@ class Trainer(object):
                 test_correct += (predicted == labels).sum().item()
                 test_total += labels.size(0)
             reweights = self.net.module.frequency_weights
-            reweights = torch.sigmoid(reweights).detach().cpu().numpy()
+            reweights = 16 * F.softmax(reweights, dim = 0).detach().cpu().numpy()
         print(f'In this epoch, frequency weights are {reweights}')
         return test_correct / test_total
     def _load_net_device(self):

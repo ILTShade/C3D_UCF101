@@ -12,6 +12,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class C3DNetwork(nn.Module):
     '''
@@ -62,8 +63,8 @@ class C3DNetwork(nn.Module):
         self.fc7 = nn.Linear(4096, num_classes)
     def forward(self, x):
         # reweight
-        reweight = torch.sigmoid(self.frequency_weights)
-        reweight = torch.reshape(reweight, (1, 1, 16, 1, 1))
+        reweight = F.softmax(self.frequency_weights, dim = 0)
+        reweight = 16 * torch.reshape(reweight, (1, 1, 16, 1, 1))
         x = x * reweight
         # part1
         x = self.relu1(self.bn1(self.conv1(x)))
@@ -95,4 +96,4 @@ if __name__ == '__main__':
     inputs = torch.rand(1, 3, 16, 112, 112)
     outputs = net(inputs)
     print(outputs.size())
-    print(torch.sigmoid(net.frequency_weights).detach().cpu().numpy())
+    print(16 * F.softmax(net.frequency_weights, dim = 0).detach().cpu().numpy())
